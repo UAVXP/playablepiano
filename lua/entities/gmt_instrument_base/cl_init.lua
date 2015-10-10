@@ -73,11 +73,10 @@ concommand.Add("playablepiano_midi_ports",function()
 	
 	if not next(ports) then return end
 	
-	local chosen = playablepiano_midi_port:GetInt()
-	local port = ports[chosen] or next(ports)
+	local port = ports[playablepiano_midi_port:GetInt()] or next(ports)
 	
 	for k,v in next,midi.GetPorts() do
-		MsgN(k==port and "> " or "  ",k," = ",v)
+		MsgN(k==port and "> " or "  ",k,"=",v)
 	end
 end)
 
@@ -92,7 +91,9 @@ hook.Add( "MIDI", "gmt_instrument_base", function( time, command, note, velocity
 	instrument = instrument.Instrument 
 	instrument = instrument and instrument:IsValid() and instrument
 	
-    // Zero velocity NOTE_ON substitutes NOTE_OFF
+	if not instrument then return end
+    
+	// Zero velocity NOTE_ON substitutes NOTE_OFF
     if !midi || midi.GetCommandName( command ) != "NOTE_ON" || velocity == 0 || !instrument.MIDIKeys || !instrument.MIDIKeys[note] then return end
 	
 	if not instrument.OnRegisteredKeyPlayed then return end
@@ -457,6 +458,7 @@ function ENT:CaptureAllKeys(capture)
 		
 		g_dummy = vgui.Create'EditablePanel'
 		
+		
 		g_dummy:Dock(FILL)
 		function g_dummy:OnMouseReleased()
 			self:Remove()
@@ -468,6 +470,8 @@ function ENT:CaptureAllKeys(capture)
 			
 		end
 		g_dummy:MakePopup()
+		g_dummy:SetMouseInputEnabled(false)
+		g_dummy:SetKeyboardInputEnabled(true)
 		
 		return
 	
@@ -480,7 +484,8 @@ end
 function ENT:OnRemove()
 
 	self:CloseSheetMusic()
-
+	self:CaptureAllKeys(false)
+	
 end
 
 function ENT:Shutdown()
