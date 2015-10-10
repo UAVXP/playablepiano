@@ -134,12 +134,6 @@ function ENT:AddOwner( ply )
 
 end
 
-function ENT:Think()
-	if self.Owner and IsValid( self.Owner ) and (not self.Owner:Alive()) then
-		self:RemoveOwner()
-	end
-end
-
 function ENT:RemoveOwner()
 
 	if !IsValid( self.Owner ) then return end
@@ -158,26 +152,38 @@ function ENT:RemoveOwner()
 
 end
 
-function ENT:NetworkKey( key, timestamp )
+/*function ENT:NetworkKeys( keys )
 
 	if !IsValid( self.Owner ) then return end // no reason to broadcast it
 
-	// Calculate note effect position
-	local pos = string.sub( key, 2, 3 )
-	pos = math.Fit( tonumber( pos ), 1, 36, -3.8, 4 )
-	pos = self.Owner:GetPos() + Vector( -15, pos * 10, -5 ) 
+	net.Start( "InstrumentNetwork" )
+
+		net.WriteEntity( self )
+		net.WriteInt( INSTNET_HEAR, 3 )
+		net.WriteTable( keys )
+
+	net.Broadcast()
+
+end*/
+
+function ENT:NetworkKey( key )
+
+	if !IsValid( self.Owner ) then return end // no reason to broadcast it
 
 	net.Start( "InstrumentNetwork" )
 
 		net.WriteEntity( self )
 		net.WriteInt( INSTNET_HEAR, 3 )
 		net.WriteString( key )
-		net.WriteFloat( timestamp )
-		net.WriteVector( pos )
 
 	net.Broadcast()
 
 end
+
+// Returns the approximate "fitted" number based on linear regression.
+function math.Fit( val, valMin, valMax, outMin, outMax )
+	return ( val - valMin ) * ( outMax - outMin ) / ( valMax - valMin ) + outMin
+end	
 
 net.Receive( "InstrumentNetwork", function( length, client )
 
@@ -192,7 +198,7 @@ net.Receive( "InstrumentNetwork", function( length, client )
 		// Filter out non-instruments
 		if ent.Base != "gmt_instrument_base" then return end
 
-		// This instrument does not have an owner...
+		// This instrument doesn't have an owner...
 		if !IsValid( ent.Owner ) then return end
 
 		// Check if the player is actually the owner of the instrument
@@ -200,17 +206,24 @@ net.Receive( "InstrumentNetwork", function( length, client )
 
 			// Gather note
 			local key = net.ReadString()
-
-			// Calculate timing
-			local timestamp = net.ReadFloat()
-			if not client.inst_timing_offset then
-				client.inst_timing_offset = os.clock() - timestamp
-			end
-
-			timestamp = timestamp + client.inst_timing_offset
 		
 			// Send it!!
-			ent:NetworkKey( key, timestamp )
+			ent:NetworkKey( key )
+
+			// Offset the note effect
+			local pos = string.sub( key, 2, 3 )
+			pos = math.Fit( tonumber( pos ), 1, 36, -3.8, 4 )
+
+			// Note effect
+			local eff = EffectData()
+				eff:SetOrigin( client:GetPos() + Vector( -15, pos * 10, -5 ) )
+			util.Effect( "musicnotes", eff, true, true )
+
+			// Gather notes
+			/*local keys = net.ReadTable()
+		
+			// Send them!!
+			ent:NetworkKeys( keys )*/
 
 		end
 
@@ -229,7 +242,7 @@ concommand.Add( "instrument_leave", function( ply, cmd, args )
 	// Filter out non-instruments
 	if !IsValid( ent ) || ent.Base != "gmt_instrument_base" then return end
 
-	// This instrument does not have an owner...
+	// This instrument doesn't have an owner...
 	if !IsValid( ent.Owner ) then return end
 
 	// Leave instrument

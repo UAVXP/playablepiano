@@ -13,8 +13,6 @@ INSTNET_USE		= 1
 INSTNET_HEAR	= 2
 INSTNET_PLAY	= 3
 
-INST_LATENCY    = 0.35
-
 //ENT.Keys = {}
 ENT.ControlKeys = { 
 	[KEY_TAB] =	function( inst, bPressed )
@@ -84,8 +82,3 @@ hook.Add( "PhysgunPickup", "NoPickupInsturmentChair", function( ply, ent )
 	end
 
 end )
-
-// Returns the approximate "fitted" number based on linear regression.
-function math.Fit( val, valMin, valMax, outMin, outMax )
-	return ( val - valMin ) * ( outMax - outMin ) / ( valMax - valMin ) + outMin
-end	
