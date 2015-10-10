@@ -62,8 +62,6 @@ sound/gmodtower/lobby/instruments/piano/b19.wav
 sound/gmodtower/lobby/instruments/piano/a3.wav
 materials/sprites/music.vmt
 materials/sprites/music.vtf
-materials/vgui/entities/gmt_instrument_piano.vtf
-materials/vgui/entities/gmt_instrument_piano.vmt
 materials/gmod_tower/instruments/piano/piano_large.vmt
 materials/gmod_tower/instruments/piano/piano_note_right.vtf
 materials/gmod_tower/instruments/piano/piano_note_full.vtf

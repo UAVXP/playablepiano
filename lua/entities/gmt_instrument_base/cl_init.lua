@@ -67,15 +67,71 @@ ENT.BrowserHUD = {
 	Height = 768,
 }
 
-function ENT:Initialize()
-	// Open a midi device if it hasn't been opened yet
-	if ( midi && !midi.IsOpened() && table.Count( midi.GetPorts() ) > 0 ) then
-		midi.Open( table.GetFirstKey( midi.GetPorts() ) )
+local playablepiano_midi_port = CreateClientConVar("playablepiano_midi_port","0",true)
+concommand.Add("playablepiano_midi_ports",function()
+	local ports = midi.GetPorts()
+	
+	if not next(ports) then return end
+	
+	local port = ports[playablepiano_midi_port:GetInt()] or next(ports)
+	
+	for k,v in next,midi.GetPorts() do
+		MsgN(k==port and "> " or "  ",k,"=",v)
 	end
+end)
 
-    hook.Add( "MIDI", self, self.OnMIDIEvent )
+concommand.Add("playablepiano_midi_load",function()
+	require("midi")
+end)
+
+local playablepiano_midi_hear = CreateClientConVar("playablepiano_midi_hear","0",true)
+hook.Add( "MIDI", "gmt_instrument_base", function( time, command, note, velocity )
+	local instrument = LocalPlayer()
+	instrument = instrument and instrument:IsValid()
+	instrument = instrument.Instrument 
+	instrument = instrument and instrument:IsValid()
+	
+    // Zero velocity NOTE_ON substitutes NOTE_OFF
+    if !midi || midi.GetCommandName( command ) != "NOTE_ON" || velocity == 0 || !instrument.MIDIKeys || !instrument.MIDIKeys[note] then return end
+	
+	if not instrument.OnRegisteredKeyPlayed then return end
+	
+    instrument:OnRegisteredKeyPlayed( instrument.MIDIKeys[note].Sound, not playablepiano_midi_hear:GetBool() )
+end)
+
+local g_port
+function ENT:OpenMIDI()
+	
+	if not midi then return end
+	if midi.IsOpened() then return end
+	local ports = midi.GetPorts()
+	
+	if not next(ports) then return end
+	
+	local port = ports[playablepiano_midi_port:GetInt()] or next(ports)
+	
+	midi.Open( port )
+	
+	g_port = port
+end
+
+local function CloseMIDI()
+	
+	if not midi then return end
+	if not midi.IsOpened() then return end
+	local ports = midi.GetPorts()
+	
+	if not next(ports) then return end
+	if not g_port or not ports[g_port] then return end
+	local port = g_port
+	g_port = nil
+	midi.Close( port )
+end
+
+function ENT:Initialize()
 
 	self:PrecacheMaterials()
+	
 end
 
 function ENT:Think()
@@ -131,14 +187,7 @@ function ENT:Think()
 
 end
 
-function ENT:OnMIDIEvent( time, command, note, velocity )
-    if !IsValid( LocalPlayer().Instrument ) || LocalPlayer().Instrument != self then return end
 
-    // Zero velocity NOTE_ON substitutes NOTE_OFF
-    if !midi || midi.GetCommandName( command ) != "NOTE_ON" || velocity == 0 || !self.MIDIKeys || !self.MIDIKeys[note] then return end
-
-    self:OnRegisteredKeyPlayed( self.MIDIKeys[note].Sound, true )
-end
 
 function ENT:IsKeyTriggered( key )
 	return self.KeysDown[ key ] && !self.KeysWasDown[ key ]
@@ -398,6 +447,35 @@ function ENT:SheetMusicBack()
 
 end
 
+
+local g_dummy
+function ENT:CaptureAllKeys(capture)
+	if capture == true then
+		
+		if g_dummy and g_dummy:IsValid() then return end
+		
+		g_dummy = vgui.Create'EditablePanel'
+		
+		g_dummy:Dock(FILL)
+		function g_dummy:OnMouseReleased()
+			self:Remove()
+			
+			local instrument = LocalPlayer().Instrument 
+			instrument = instrument and instrument:IsValid()
+			
+			RunConsoleCommand( "instrument_leave", instrument and instrument:EntIndex() )
+			
+		end
+		g_dummy:MakePopup()
+		
+		return
+	
+	end
+	
+	g_dummy:Remove()
+	
+end
+
 function ENT:OnRemove()
 
 	self:CloseSheetMusic()
@@ -407,7 +485,9 @@ end
 function ENT:Shutdown()
 
 	self:CloseSheetMusic()
-
+	
+	self:CaptureAllKeys(false)
+	
 	self.AdvancedMode = false
 	self.ShiftMode = false
 
@@ -456,15 +536,6 @@ hook.Add( "HUDPaint", "InstrumentPaint", function()
 
 end )
 
-// Override regular keys
-hook.Add( "PlayerBindPress", "InstrumentHook", function( ply, bind, pressed )
-
-	if IsValid( ply.Instrument ) then
-		return true
-	end
-
-end )
-
 net.Receive( "InstrumentNetwork", function( length, client )
 
 	local ent = net.ReadEntity()
@@ -476,10 +547,19 @@ net.Receive( "InstrumentNetwork", function( length, client )
 		if IsValid( LocalPlayer().Instrument ) then
 			LocalPlayer().Instrument:Shutdown()
 		end
-
-		ent.DelayKey = CurTime() + .1 // delay to the key a bit so they don't play on use key
+		
+		CloseMIDI()
+		
 		LocalPlayer().Instrument = ent
-
+		
+		if ent and ent:IsValid() then
+			ent.DelayKey = CurTime() + .1 // delay to the key a bit so they don't play on use key
+			if ent:IsValid() then
+				ent:CaptureAllKeys(true)
+				ent:OpenMIDI()
+			end
+		end
+		
 	// Play the notes for everyone else
 	elseif enum == INSTNET_HEAR then
 
