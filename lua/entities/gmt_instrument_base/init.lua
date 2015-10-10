@@ -14,11 +14,15 @@ function ENT:Initialize()
 	self:DrawShadow( true )
 
 	local phys = self:GetPhysicsObject()
-	if IsValid( phys ) then
+	if phys:IsValid() then
 		phys:Wake()
 	end
 
 	self:InitializeAfter()
+
+	timer.Simple(0, function()
+		self.Owner = nil
+	end)
 	
 end
 
@@ -35,8 +39,8 @@ function ENT:SetupChair( vecmdl, angmdl, vecvehicle, angvehicle )
 	self.ChairMDL = ents.Create( "prop_physics_multiplayer" )
 	self.ChairMDL:SetModel( self.ChairModel )
 	self.ChairMDL:SetParent( self )
-	self.ChairMDL:SetPos( self:GetPos() + vecmdl )
-	self.ChairMDL:SetAngles( angmdl )
+	self.ChairMDL:SetPos( self:LocalToWorld( vecmdl ) )
+	self.ChairMDL:SetAngles( self:GetAngles() + angmdl )
 	self.ChairMDL:DrawShadow( false )
 
 	self.ChairMDL:SetCollisionGroup( COLLISION_GROUP_DEBRIS_TRIGGER )
@@ -46,7 +50,7 @@ function ENT:SetupChair( vecmdl, angmdl, vecvehicle, angvehicle )
 	self.ChairMDL:SetOwner( self )
 	
 	local phys = self.ChairMDL:GetPhysicsObject()
-	if IsValid(phys) then
+	if phys:IsValid() then
 		phys:EnableMotion(false)
 		phys:Sleep()
 	end
@@ -57,9 +61,9 @@ function ENT:SetupChair( vecmdl, angmdl, vecvehicle, angvehicle )
 	self.Chair = ents.Create( "prop_vehicle_prisoner_pod" )
 	self.Chair:SetModel( "models/nova/airboat_seat.mdl" )
 	self.Chair:SetKeyValue( "vehiclescript","scripts/vehicles/prisoner_pod.txt" )
-	self.Chair:SetPos( self.ChairMDL:GetPos() + vecvehicle )
+	self.Chair:SetPos( self.ChairMDL:LocalToWorld( vecvehicle ) )
 	self.Chair:SetParent( self.ChairMDL )
-	self.Chair:SetAngles( angvehicle )
+	self.Chair:SetAngles( self:GetAngles() + angvehicle )
 	self.Chair:SetNotSolid( true )
 	self.Chair:SetNoDraw( true )
 	self.Chair:DrawShadow( false )
@@ -72,7 +76,7 @@ function ENT:SetupChair( vecmdl, angmdl, vecvehicle, angvehicle )
 	self.Chair:Activate()
 	
 	local phys = self.Chair:GetPhysicsObject()
-	if IsValid(phys) then
+	if phys:IsValid() then
 		phys:EnableMotion(false)
 		phys:Sleep()
 	end
@@ -83,22 +87,20 @@ local function HookChair( ply, ent )
 
 	local inst = ent:GetOwner()
 
-	if IsValid( inst ) && inst.Base == "gmt_instrument_base" then
+	if IsValid( inst ) and inst.Base == "gmt_instrument_base" then
 
 		if !IsValid( inst.Owner ) then
 			inst:AddOwner( ply )
-			return true
+			return
 		else
 			if inst.Owner == ply then
-				return true
+				return
 			end
 		end
 
 		return false
 
 	end
-
-	return true
 
 end
 
@@ -180,10 +182,14 @@ function ENT:NetworkKey( key )
 
 end
 
+function ENT:OnRemove()
+	self:RemoveOwner()
+end
+
 // Returns the approximate "fitted" number based on linear regression.
 function math.Fit( val, valMin, valMax, outMin, outMax )
 	return ( val - valMin ) * ( outMax - outMin ) / ( valMax - valMin ) + outMin
-end	
+end
 
 net.Receive( "InstrumentNetwork", function( length, client )
 
@@ -196,7 +202,7 @@ net.Receive( "InstrumentNetwork", function( length, client )
 	if enum == INSTNET_PLAY then
 
 		// Filter out non-instruments
-		if ent.Base != "gmt_instrument_base" then return end
+		if ent.Base ~= "gmt_instrument_base" then return end
 
 		// This instrument doesn't have an owner...
 		if !IsValid( ent.Owner ) then return end
@@ -240,7 +246,7 @@ concommand.Add( "instrument_leave", function( ply, cmd, args )
 	local ent = ents.GetByIndex( entid )
 
 	// Filter out non-instruments
-	if !IsValid( ent ) || ent.Base != "gmt_instrument_base" then return end
+	if !IsValid( ent ) or ent.Base ~= "gmt_instrument_base" then return end
 
 	// This instrument doesn't have an owner...
 	if !IsValid( ent.Owner ) then return end

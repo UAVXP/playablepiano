@@ -486,6 +486,8 @@ net.Receive( "InstrumentNetwork", function( length, client )
 		// Instrument doesn't exist
 		if !IsValid( ent ) then return end
 
+		if !ent.GetSound then return end
+		
 		// Don't play for the owner, they've already heard it!
 		if IsValid( LocalPlayer().Instrument ) && LocalPlayer().Instrument == ent then
 			return
