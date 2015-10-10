@@ -73,10 +73,11 @@ concommand.Add("playablepiano_midi_ports",function()
 	
 	if not next(ports) then return end
 	
-	local port = ports[playablepiano_midi_port:GetInt()] or next(ports)
+	local chosen = playablepiano_midi_port:GetInt()
+	local port = ports[chosen] or next(ports)
 	
 	for k,v in next,midi.GetPorts() do
-		MsgN(k==port and "> " or "  ",k,"=",v)
+		MsgN(k==port and "> " or "  ",k," = ",v)
 	end
 end)
 
@@ -87,9 +88,9 @@ end)
 local playablepiano_midi_hear = CreateClientConVar("playablepiano_midi_hear","0",true)
 hook.Add( "MIDI", "gmt_instrument_base", function( time, command, note, velocity )
 	local instrument = LocalPlayer()
-	instrument = instrument and instrument:IsValid()
+	instrument = instrument and instrument:IsValid() and instrument
 	instrument = instrument.Instrument 
-	instrument = instrument and instrument:IsValid()
+	instrument = instrument and instrument:IsValid() and instrument
 	
     // Zero velocity NOTE_ON substitutes NOTE_OFF
     if !midi || midi.GetCommandName( command ) != "NOTE_ON" || velocity == 0 || !instrument.MIDIKeys || !instrument.MIDIKeys[note] then return end
@@ -461,7 +462,7 @@ function ENT:CaptureAllKeys(capture)
 			self:Remove()
 			
 			local instrument = LocalPlayer().Instrument 
-			instrument = instrument and instrument:IsValid()
+			instrument = instrument and instrument:IsValid() and instrument
 			
 			RunConsoleCommand( "instrument_leave", instrument and instrument:EntIndex() )
 			
