@@ -477,7 +477,7 @@ function ENT:CaptureAllKeys(capture)
 	
 	end
 	
-	g_dummy:Remove()
+	if g_dummy and g_dummy:IsValid() then g_dummy:Remove() end
 	
 end
 
