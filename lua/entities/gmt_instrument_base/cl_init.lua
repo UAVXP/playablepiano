@@ -94,6 +94,10 @@ hook.Add( "MIDI", "gmt_instrument_base", function( time, command, note, velocity
 	if not instrument then return end
     
 	// Zero velocity NOTE_ON substitutes NOTE_OFF
+	
+	-- bad argument #1 to 'GetCommandName' (number expected, got nil)
+	if not command then ErrorNoHalt("MIDI: nil command??\n") return end
+	
     if !midi || midi.GetCommandName( command ) != "NOTE_ON" || velocity == 0 || !instrument.MIDIKeys || !instrument.MIDIKeys[note] then return end
 	
 	if not instrument.OnRegisteredKeyPlayed then return end
