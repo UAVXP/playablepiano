@@ -546,6 +546,9 @@ hook.Add( "HUDPaint", "InstrumentPaint", function()
 
 end )
 
+local playablepiano_hear = CreateClientConVar("playablepiano_hear","1",true)
+--TODO: Make muting single players possible
+
 net.Receive( "InstrumentNetwork", function( length, client )
 
 	local ent = net.ReadEntity()
@@ -582,7 +585,9 @@ net.Receive( "InstrumentNetwork", function( length, client )
 		if IsValid( LocalPlayer().Instrument ) && LocalPlayer().Instrument == ent then
 			return
 		end
-
+		
+		if not playablepiano_hear:GetBool() then return end
+		
 		// Gather note
 		local key = net.ReadString()
 		local sound = ent:GetSound( key )
