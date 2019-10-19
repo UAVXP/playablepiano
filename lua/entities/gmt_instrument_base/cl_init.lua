@@ -21,7 +21,7 @@ surface.CreateFont( "InstrumentNotice", {
 if ( file.Exists("lua/bin/gmcl_midi_win32.dll", "MOD") ||
 	 file.Exists("lua/bin/gmcl_midi_linux.dll", "MOD") ||
 	 file.Exists("lua/bin/gmcl_midi_osx.dll", "MOD") ) then
-	 	require("midi")
+	 	pcall(require,"midi")
 end
 
 // For drawing purposes
